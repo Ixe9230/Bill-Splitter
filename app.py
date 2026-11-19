@@ -8,12 +8,16 @@ db = SQLAlchemy(app)
 class Person(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False, unique=True)
+    items = db.relationship('Item', secondary='item_shares', backref='people')
+    payments = db.relationship('Payment', backref='person')
 
 class Bill(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     tax_rate = db.Column(db.Float, default=0.13)
     tip_rate = db.Column(db.Float, default=0.15)
+    items = db.relationship('Item', backref='bill')
+    payments = db.relationship('Payment', backref='bill')
 
 class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)
