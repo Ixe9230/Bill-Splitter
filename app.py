@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -35,6 +35,14 @@ item_shares = db.Table('item_shares',
                        db.Column('person_id', db.Integer, db.ForeignKey('person.id'), primary_key=True),
                        db.Column('item_id', db.Integer, db.ForeignKey('item.id'), primary_key=True)
                        )
+
+@app.route("/bills")
+def get_bills():
+    bills = Bill.query.all()
+    return jsonify([
+        {"id": b.id, "title": b.title, "tax_rate": b.tax_rate, "tip_rate": b.tip_rate}
+        for b in bills
+    ])
 
 if __name__ == "__main__":
     with app.app_context():
