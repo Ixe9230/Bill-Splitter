@@ -37,7 +37,7 @@ item_shares = db.Table('item_shares',
                        )
 
 @app.route("/bills", methods=["POST"])
-def creat_bill():
+def create_bill():
     data = request.get_json(silent=True) or {}
     title = data.get("title")
 
