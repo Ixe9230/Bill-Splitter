@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -35,6 +35,27 @@ item_shares = db.Table('item_shares',
                        db.Column('person_id', db.Integer, db.ForeignKey('person.id'), primary_key=True),
                        db.Column('item_id', db.Integer, db.ForeignKey('item.id'), primary_key=True)
                        )
+
+@app.route("/bills", methods=["POST"])
+def creat_bill():
+    data = request.get_json(silent=True) or {}
+    title = data.get("title")
+
+    if not isinstance(title, str) or not title.strip(): 
+        return jsonify({"error": "title is required"}), 400
+    if len(title) > 100:
+        return jsonify({"error": "title must be 100 characters or less"}), 400
+
+    bill = Bill(title=title.strip())
+    db.session.add(bill)
+    db.session.commit()
+
+    return jsonify({
+        "id": bill.id,
+        "title": bill.title,
+        "tax_rate": bill.tax_rate,
+        "tip_rate": bill.tip_rate
+    }), 201
 
 @app.route("/bills")
 def get_bills():
