@@ -65,6 +65,31 @@ def get_bills():
         for b in bills
     ])
 
+@app.route("/people", methods=["POST"])
+def create_person():
+    data = request.get_json(silent=True) or {}
+    name = data.get("name")
+
+    if not isinstance(name, str) or not name.strip():
+        return jsonify({"error": "name is required"}), 400
+    name = name.strip()
+    if len(name) > 50:
+        return jsonify({"error": "name must be 50 characters or less"}), 400
+    if Person.query.filter_by(name=name).first():
+        return jsonify({"error": "that name already exists"}), 409
+
+    person = Person(name=name)
+    db.session.add(person)
+    db.session.commit()
+
+    return jsonify({"id": person.id, "name": person.name}), 201
+
+
+@app.route("/people")
+def get_people():
+    people = Person.query.all()
+    return jsonify([{"id": p.id, "name": p.name} for p in people])
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
