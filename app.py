@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
+from settlement import calculate_balances, settle_up
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///billsplitter.db"
@@ -211,6 +212,32 @@ def get_bill(bill_id):
             }
             for pay in bill.payments
         ]
+    })
+
+@app.route("/bills/<int:bill_id>/settlement")
+def get_settlement(bill_id):
+    bill = db.session.get(Bill, bill_id)
+    if bill is None:
+        return jsonify({"error": "bill not found"}), 404
+
+    items = []
+    for item in bill.items:
+        names = [p.name for p in item.people]
+        if names:
+            items.append((item.price, names))
+
+    payments = {}
+    for pay in bill.payments:
+        name = pay.person.name
+        payments[name] = payments.get(name, 0) + pay.amount_paid
+
+    balances = calculate_balances(items, bill.tax_rate, bill.tip_rate, payments)
+    transfers = settle_up(balances)
+
+    return jsonify({
+        "bill_id": bill.id,
+        "balances": balances,
+        "transfers": transfers
     })
 
 if __name__ == "__main__":
