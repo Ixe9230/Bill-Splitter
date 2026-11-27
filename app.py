@@ -90,6 +90,36 @@ def get_people():
     people = Person.query.all()
     return jsonify([{"id": p.id, "name": p.name} for p in people])
 
+@app.route("/bills/<int:bill_id>/items", methods=["POST"])
+def add_item(bill_id):
+    bill = db.session.get(Bill, bill_id)
+    if bill is None:
+        return jsonify({"error": "bill not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    name = data.get("name")
+    price = data.get("price")
+
+    if not isinstance(name, str) or not name.strip():
+        return jsonify({"error": "name is required"}), 400
+    name = name.strip()
+    if len(name) > 100:
+        return jsonify({"error": "name must be 100 characters or less"}), 400
+
+    if isinstance(price, bool) or not isinstance(price, (int, float)) or price <= 0:
+        return jsonify({"error": "price must be a positive number"}), 400
+
+    item = Item(name=name, price=price, bill=bill)
+    db.session.add(item)
+    db.session.commit()
+
+    return jsonify({
+        "id": item.id,
+        "name": item.name,
+        "price": item.price,
+        "bill_id": bill.id
+    }), 201
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
