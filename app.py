@@ -136,6 +136,41 @@ def add_item(bill_id):
         "people": [p.name for p in item.people]
     }), 201
 
+@app.route("/bills/<int:bill_id>/payments", methods=["POST"])
+def add_payment(bill_id):
+    bill = db.session.get(Bill, bill_id)
+    if bill is None:
+        return jsonify({"error": "bill not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    person_name = data.get("person")
+    amount = data.get("amount")
+
+    if not isinstance(person_name, str) or not person_name.strip():
+        return jsonify({"error": "person is required"}), 400
+    person_name = person_name.strip()
+    if len(person_name) > 50:
+        return jsonify({"error": "person must be 50 characters or less"}), 400
+
+    if isinstance(amount, bool) or not isinstance(amount, (int, float)) or amount <= 0:
+        return jsonify({"error": "amount must be a positive number"}), 400
+
+    person = Person.query.filter_by(name=person_name).first()
+    if person is None:
+        person = Person(name=person_name)
+        db.session.add(person)
+
+    payment = Payment(amount_paid=amount, person=person, bill=bill)
+    db.session.add(payment)
+    db.session.commit()
+
+    return jsonify({
+        "id": payment.id,
+        "bill_id": bill.id,
+        "person": person.name,
+        "amount": payment.amount_paid
+    }), 201
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
