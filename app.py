@@ -36,6 +36,13 @@ item_shares = db.Table('item_shares',
                        db.Column('item_id', db.Integer, db.ForeignKey('item.id'), primary_key=True)
                        )
 
+def is_valid_rate(value):
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and 0 <= value <= 1
+    )
+
 @app.route("/bills", methods=["POST"])
 def create_bill():
     data = request.get_json(silent=True) or {}
@@ -46,7 +53,12 @@ def create_bill():
     if len(title) > 100:
         return jsonify({"error": "title must be 100 characters or less"}), 400
 
-    bill = Bill(title=title.strip())
+    tax_rate = data.get("tax_rate", 0.13)
+    tip_rate = data.get("tip_rate", 0.15)
+    if not is_valid_rate(tax_rate) or not is_valid_rate(tip_rate):
+        return jsonify({"error": "tax_rate and tip_rate must be numbers between 0 and 1"}), 400
+
+    bill = Bill(title=title.strip(), tax_rate=tax_rate, tip_rate=tip_rate) 
     db.session.add(bill)
     db.session.commit()
 
@@ -170,6 +182,36 @@ def add_payment(bill_id):
         "person": person.name,
         "amount": payment.amount_paid
     }), 201
+
+@app.route("/bills/<int:bill_id>")
+def get_bill(bill_id):
+    bill = db.session.get(Bill, bill_id)
+    if bill is None:
+        return jsonify({"error": "bill not found"}), 404
+
+    return jsonify({
+        "id": bill.id,
+        "title": bill.title,
+        "tax_rate": bill.tax_rate,
+        "tip_rate": bill.tip_rate,
+        "items": [
+            {
+                "id": i.id,
+                "name": i.name,
+                "price": i.price,
+                "people": [p.name for p in i.people]
+            }
+            for i in bill.items
+        ],
+        "payments": [
+            {
+                "id": pay.id,
+                "person": pay.person.name,
+                "amount": pay.amount_paid
+            }
+            for pay in bill.payments
+        ]
+    })
 
 if __name__ == "__main__":
     with app.app_context():
