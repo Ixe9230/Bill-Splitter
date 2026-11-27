@@ -109,7 +109,19 @@ def add_item(bill_id):
     if isinstance(price, bool) or not isinstance(price, (int, float)) or price <= 0:
         return jsonify({"error": "price must be a positive number"}), 400
 
+    names = data.get("people")
+    if not isinstance(names, list) or not names or not all(isinstance(n, str) for n in names):
+        return jsonify({"error": "people must be a non-empty list of names"}), 400
+
+    people = []
+    for n in dict.fromkeys(n.strip() for n in names):
+        person = Person.query.filter_by(name=n).first()
+        if person is None:
+            return jsonify({"error": f"person not found: {n}"}), 400
+        people.append(person)
+    
     item = Item(name=name, price=price, bill=bill)
+    item.people.extend(people)
     db.session.add(item)
     db.session.commit()
 
@@ -117,7 +129,8 @@ def add_item(bill_id):
         "id": item.id,
         "name": item.name,
         "price": item.price,
-        "bill_id": bill.id
+        "bill_id": bill.id,
+        "people": [p.name for p in item.people]
     }), 201
 
 if __name__ == "__main__":
