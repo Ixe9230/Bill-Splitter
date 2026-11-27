@@ -115,9 +115,12 @@ def add_item(bill_id):
 
     people = []
     for n in dict.fromkeys(n.strip() for n in names):
+        if not n or len(n) > 50:
+            return jsonify({"error": "each name must be 1 to 50 characters"}), 400
         person = Person.query.filter_by(name=n).first()
         if person is None:
-            return jsonify({"error": f"person not found: {n}"}), 400
+            person = Person(name=n)
+            db.session.add(person)
         people.append(person)
     
     item = Item(name=name, price=price, bill=bill)
